@@ -1,0 +1,231 @@
+#!/usr/bin/perl
+
+#print "/Helvetica findfont 12 scalefont setfont 12 12 moveto ($ARGV[0]) show stroke\n";
+
+$pi = 4 * atan2(1, 1);
+$foot = .00000274;
+$miledeg = 5280 * $foot;
+
+
+$v = 18 * 44;
+
+open(IN, "names-official-centers");
+while (<IN>) {
+	chomp;
+	@points = split(/ /, $_);
+	$station = $points[1];
+	$realcenter{$station} = $points[$#points];
+	($reallat{$station}, $reallon{$station}) = split(/,/, $points[$#points]);
+}
+
+open(IN, "names-corrected-centers");
+while (<IN>) {
+	chomp;
+
+	$v = 612 - ($seq % 7) * (612 / 7);
+	$h = int($seq / 7) * (792 / 6);
+
+	$seq++;
+
+	($count, $name, @files)  = split(/ /);
+
+	$where = $files[$#files];
+	($lat, $lon) = split(/,/, $where);
+
+	$realwhere = $realcenter{$name};
+
+	$rat = cos($lat * $pi / 180);
+
+	die "$where" if $lat == 0 || $lon == 0;
+
+
+
+	for $file (@files) {
+		next unless $file =~ /\.svg/;
+
+		print STDERR "$file\n";
+		open(IN2, "zcat $file.gz |");
+
+		$line = 0;
+
+		@x = ();
+		@y = ();
+		@x1 = ();
+		@y1 = ();
+		@x2 = ();
+		@y2 = ();
+		@x3 = ();
+		@y3 = ();
+		@x4 = ();
+		@y4 = ();
+		$maxwidth = 0;
+
+		$circles = 0;
+
+		while (<IN2>) {
+			#last if (/xlink.*glyph/);
+
+			#last if ($circles >= 2 && /rgb\(100%,100%,100%/);
+			last if ($circles >= 2 && /xlink.*glyph/);
+
+			if (/transform="matrix\(([0-9.-]+),0,0,([0-9.-]+),([0-9.-]+),([0-9.-]+)/) {
+				$x = $3;
+				$y = $4;
+
+				if (/66.[0-9]*%,0%,90.[0-9]*%/) { # walk
+					push @x, $x;
+					push @y, $y;
+				}
+
+				if (/21.[0-9]*%,65.[0-9]*%,0%/) { # bike
+					push @x1, $x;
+					push @y1, $y;
+				}
+
+				if (/0%,77.[0-9]*%,100%/) { # transit
+					push @x2, $x;
+					push @y2, $y;
+				}
+
+				if (/100%,0%,0%/) { # car
+					push @x3, $x;
+					push @y3, $y;
+				}
+
+				if (/100%,65.[0-9]*%,0%/) { # dropoff
+					push @x4, $x;
+					push @y4, $y;
+				}
+			}
+
+			if (/69.[0-9]*%,69.[0-9]*%,69.[0-9]*%/) {
+				$xmin = 0;
+				$ymin = 0;
+				$xmax = 0;
+				$ymax = 0;
+
+				$count = 0;
+
+				s/.*d="//;
+				#s/^M [0-9.-]+ [0-9.-]+ +//;
+				#print;
+
+				while (s/^[LM] ([0-9.-]+) ([0-9.-]+) +//) {
+					$xmin = $1 if $1 < $xmin;
+					$xmax = $1 if $1 > $xmax;
+
+					$ymin = $2 if $2 < $ymin;
+					$ymax = $2 if $2 > $ymax;
+
+					$count++;
+				}
+
+				$xm = 1;
+				$ym = 1;
+				$xo = 0;
+				$yo = 0;
+
+				if (/transform="matrix\(([0-9.-]+),0,0,([0-9.-]+),([0-9.-]+),([0-9.-]+)/) {
+					($xm, $ym, $xo, $yo) = ($1, $2, $3, $4);
+				}
+
+				#print;
+
+				$width = ($xmax * $xm + $xo) - ($xmin * $xm + $xo);
+				$height = ($ymax * $ym + $yo) - ($ymin * $ym + $yo);
+
+				if ($width > $maxwidth) {
+					$maxwidth = $width;
+					$xmid = ($xmin + $xmax) / 2 * $xm + $xo;
+					$ymid = ($ymin + $ymax) / 2 * $ym + $yo;
+				}
+
+				if ($height > $maxwidth) {
+					$maxwidth = $height;
+					$xmid = ($xmin + $xmax) / 2 * $xm + $xo;
+					$ymid = ($ymin + $ymax) / 2 * $ym + $yo;
+				}
+
+				$circles++;
+			}
+		}
+
+$div = 1;
+
+		if ($maxwidth > 0) {
+			$mile = $maxwidth / 2;
+
+			for ($i = 0; $i <= $#x; $i++) {
+				$x = ($x[$i] - $xmid) / $mile;
+				$y = (($y[$i] - $ymid) / $mile);
+				$d = (sqrt($x * $x + $y * $y) * 5280 / $div) * $div;
+
+				$plat = $lat - $y * $miledeg;
+				$plon = $lon + ($x * $miledeg) / $rat;
+				$latd = $plat - $reallat{$name};
+				$lond = ($plon - $reallon{$name}) * $rat;
+				$d = sqrt($latd * $latd + $lond * $lond) * 5280 / $miledeg;
+
+				printf("walk %s %s %.6f,%.6f %s %.8f\n", $name, $file, $lat - $y * $miledeg, $lon + ($x * $miledeg) / $rat, $realwhere, $d);
+				$mode0{$d}++;
+			}
+
+			for ($i = 0; $i <= $#x1; $i++) {
+				$x = ($x1[$i] - $xmid) / $mile;
+				$y = (($y1[$i] - $ymid) / $mile);
+				$d = (sqrt($x * $x + $y * $y) * 5280/ $div) * $div;
+
+				$plat = $lat - $y * $miledeg;
+				$plon = $lon + ($x * $miledeg) / $rat;
+				$latd = $plat - $reallat{$name};
+				$lond = ($plon - $reallon{$name}) * $rat;
+				$d = sqrt($latd * $latd + $lond * $lond) * 5280 / $miledeg;
+
+				printf("bike %s %s %.6f,%.6f %s %.8f\n", $name, $file, $lat - $y * $miledeg, $lon + ($x * $miledeg) / $rat, $realwhere, $d);
+				$mode1{$d}++;
+			}
+
+			for ($i = 0; $i <= $#x2; $i++) {
+				$x = ($x2[$i] - $xmid) / $mile;
+				$y = (($y2[$i] - $ymid) / $mile);
+				$d = (sqrt($x * $x + $y * $y) * 5280 / $div) * $div;
+				$plat = $lat - $y * $miledeg;
+				$plon = $lon + ($x * $miledeg) / $rat;
+				$latd = $plat - $reallat{$name};
+				$lond = ($plon - $reallon{$name}) * $rat;
+				$d = sqrt($latd * $latd + $lond * $lond) * 5280 / $miledeg;
+
+				printf("transit %s %s %.6f,%.6f %s %.8f\n", $name, $file, $lat - $y * $miledeg, $lon + ($x * $miledeg) / $rat, $realwhere, $d);
+				$mode2{$d}++;
+			}
+
+			for ($i = 0; $i <= $#x3; $i++) {
+				$x = ($x3[$i] - $xmid) / $mile;
+				$y = (($y3[$i] - $ymid) / $mile);
+				$d = (sqrt($x * $x + $y * $y) * 5280 / $div) * $div;
+				$plat = $lat - $y * $miledeg;
+				$plon = $lon + ($x * $miledeg) / $rat;
+				$latd = $plat - $reallat{$name};
+				$lond = ($plon - $reallon{$name}) * $rat;
+				$d = sqrt($latd * $latd + $lond * $lond) * 5280 / $miledeg;
+
+				printf("drive %s %s %.6f,%.6f %s %.8f\n", $name, $file, $lat - $y * $miledeg, $lon + ($x * $miledeg) / $rat, $realwhere, $d);
+				$mode3{$d}++;
+			}
+
+			for ($i = 0; $i <= $#x4; $i++) {
+				$x = ($x3[$i] - $xmid) / $mile;
+				$y = (($y3[$i] - $ymid) / $mile);
+				$d = (sqrt($x * $x + $y * $y) * 5280 / $div) * $div;
+				$plat = $lat - $y * $miledeg;
+				$plon = $lon + ($x * $miledeg) / $rat;
+				$latd = $plat - $reallat{$name};
+				$lond = ($plon - $reallon{$name}) * $rat;
+				$d = sqrt($latd * $latd + $lond * $lond) * 5280 / $miledeg;
+
+				printf("dropoff %s %s %.6f,%.6f %s %.8f\n", $name, $file, $lat - $y * $miledeg, $lon + ($x * $miledeg) / $rat, $realwhere, $d);
+				$mode4{$d}++;
+			}
+		}
+	}
+}
