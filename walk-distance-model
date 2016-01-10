@@ -1,0 +1,10 @@
+boxcox(x, l) = (x ** l - 1) / l
+f(x) = a * (.5 + .5 * erf((boxcox(x, l) - boxcox(u, l)) / (sqrt(2) * boxcox(o, l))))
+a = 188203
+
+u               = 1271.97
+o               = 8.03196
+l               = 0.141609
+
+fit f(x) "walk-distances" using 1:0 via u, o, l
+plot "walk-distances" using 1:0 with dots, f(x)
