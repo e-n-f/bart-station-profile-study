@@ -8,3 +8,23 @@ l               = 0.141609
 
 fit f(x) "walk-distances" using 1:0 via u, o, l
 plot "walk-distances" using 1:0 with dots, f(x)
+
+
+
+
+f(x) = a * (.5 + .5 * erf((log(x) - u) / (sqrt(2) * o)))
+
+a = 3314844.46023862
+u               = 12.2112
+o               = 1.49337
+
+fit f(x) "bart-intersection-distances" using 1:0 via a, u, o
+plot "bart-intersection-distances" using 1:0 with dots, f(x)
+
+
+a               = 2.5682e+07
+a = 25681961.9061414
+u               = 14.6218          +/- 0.00344      (0.02353%)
+o               = 1.95474          +/- 0.0005444    (0.02785%)
+
+fit log(f(x)) "bart-intersection-distances" using 1:(log($0)) via a, u, o
