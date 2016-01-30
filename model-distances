@@ -1,0 +1,29 @@
+set terminal postscript
+
+boxcox(x, l) = (x ** l - 1) / l
+cdf(x, a, u, o, l) = a * (.5 + .5 * erf((boxcox(x, l) - boxcox(u, l)) / (sqrt(2) * boxcox(o, l))))
+
+a = 145726
+u = 5859.81
+o = 1.87102
+l = -0.083514
+
+# fit cdf(x, a, u, o, l) "mode-points-home" using 6:0 via a, u, o, l
+
+a1 = 133686
+u1 = 990
+o1 = 37.4624
+l1 = 0.312
+
+a2 = 37600
+u2 = 6376
+o2 = 1.00334
+l2 = -0.588
+
+# fit cdf(x, a1, u1, o1, l1) + cdf(x, a2, u2, o2, l2) "mode-points-work" using 6:0 via a1, u1, o1, l1, a2, u2, o2, l2
+
+set xrange [0: 2 * 5280]
+
+pdf(x, a, u, o, l) = a * (x ** (l - 1)) / (boxcox(o, l) * sqrt(2 * pi)) * exp(- (boxcox(x, l) - boxcox(u, l)) ** 2 / (2 * boxcox(o, l) ** 2))
+
+plot pdf(x, a, u, o, l), pdf(x, a1, u1, o1, l1) + pdf(x, a2, u2, o2, l2);
