@@ -65,3 +65,33 @@ plot pdf(x, a, u, o, l), pdf(x, a1, u1, o1, l1) + pdf(x, a2, u2, o2, l2);
 # 
 
 plot pdf(x, 145726, 5859.81, 1.87102, -0.083514) / (10 * (pdf(x, 137748, 7757, 3.888, 0.05589) + pdf(x, 13593, 39918, 27.3165, 0.3428))), (pdf(x, 133686, 990, 37.4624, 0.312) + pdf(x, 37600, 6376, 1.00334, -0.588)) / (10 * (pdf(x, 155673, 4634, 7.78672, 0.0659) + pdf(x, 12108, 38096, 13.4126, 0.2815)))
+
+
+
+
+a               = 127206   
+u               = 970.714  
+o               = 54.8702  
+l               = 0.357013 
+a2              = 12087.4  
+u2              = 4431.76  
+o2              = 1.00063  
+l2              = -0.692587
+
+# fit cdf(x, a, u, o, l) + cdf(x, a2, u2, o2, l2)  "mode-points-walk-work" using 6:0 via a, u, o, l, a2, u2, o2, l2
+plot "mode-points-walk-work" using 6:0 with lines, cdf(x, a, u, o, l) + cdf(x, a2, u2, o2, l2)
+
+
+
+
+a               = 36762.8    
+u               = 1741.64    
+o               = 49.646     
+l               = 0.341185   
+a2              = 14233.5    
+u2              = 3714.2     
+o2              = 1.00149    
+l2              = -0.764151  
+
+# fit cdf(x, a, u, o, l) + cdf(x, a2, u2, o2, l2)  "mode-points-walk-home" using 6:0 via a, u, o, l, a2, u2, o2, l2
+plot "mode-points-walk-home" using 6:0 with lines, cdf(x, a, u, o, l) + cdf(x, a2, u2, o2, l2)
